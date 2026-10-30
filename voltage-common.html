@@ -41,7 +41,7 @@
 <div id="feedback" class="feedback hide" role="status" aria-live="polite"></div>
 <div class="bottom"><span class="small muted">Red lead: terminal being tested • Black lead: C</span><button type="button" id="next" class="hide">Next question →</button></div>
 </div>
-<div id="results" class="summary hide"><strong id="finalScore"></strong><p id="finalText"></p><button id="retry" type="button">New randomized round</button></div>
+<div id="results" class="summary hide"><strong id="finalScore"></strong><p id="finalText"></p><button id="retryMissed" type="button" class="hide">Practice missed questions</button> <button id="retry" type="button">New randomized round</button></div>
 </section>
 <section class="panel" id="reference">
 <div class="flex" style="justify-content:space-between"><h2>Study reference: C-to-terminal voltage chart</h2><button type="button" class="secondary no-print" id="toggleChart">Show chart</button></div>
@@ -78,10 +78,11 @@ add('ON','EMERGENCY HEAT',74,72,'NC',['G','B','L','X']);
 add('ON','EMERGENCY HEAT',68,72,'2nd (AUX)',['G','B','L','X','E','W2']);
 const TERMS=['G','Y','O','B','L','X','E','W2'];
 const $=id=>document.getElementById(id);
-let deck=[],pos=0,correct=0,missed=0,locked=false;
+let deck=[],pos=0,correct=0,missed=0,locked=false,missedQuestions=[];
 function sample(all){for(let i=all.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[all[i],all[j]]=[all[j],all[i]];}return all;}
 function start(){const selected=$('terminals').value==='core'?['G','Y','O','B','E','W2']:TERMS;const mode=$('mode').value;const pool=rows.filter(row=>mode==='ALL'||row.system===mode).flatMap(row=>selected.map(terminal=>({row,terminal})));
-deck=sample(pool).slice(0,Math.min(Number($('count').value),pool.length));pos=0;correct=0;missed=0;locked=false;$('quiz').classList.remove('hide');$('results').classList.add('hide');$('questionArea').classList.remove('hide');show();$('quiz').scrollIntoView({behavior:'smooth',block:'start'});}
+beginRound(sample(pool).slice(0,Math.min(Number($('count').value),pool.length)));}
+function beginRound(questions){deck=questions;missedQuestions=[];$('retryMissed').classList.add('hide');pos=0;correct=0;missed=0;locked=false;$('quiz').classList.remove('hide');$('results').classList.add('hide');$('questionArea').classList.remove('hide');show();$('quiz').scrollIntoView({behavior:'smooth',block:'start'});}
 function show(){if(pos>=deck.length){finish();return;}locked=false;const q=deck[pos],r=q.row;
 $('progress').textContent='Question '+(pos+1)+' of '+deck.length;
 $('score').textContent='Score: '+correct+' / '+pos;
@@ -90,12 +91,13 @@ const values=[['FAN',r.fan],['SYSTEM',r.system],['ROOM',r.room+'°F'],['SET POIN
 $('facts').replaceChildren(...values.map(([label,value])=>{const div=document.createElement('div');div.className='fact';const caption=document.createElement('span');caption.textContent=label;const strong=document.createElement('strong');strong.textContent=value;div.append(caption,strong);return div;}));
 $('question').innerHTML='What is the voltage between <em>C</em> and <em>'+q.terminal+'</em>?';
 $('feedback').className='feedback hide';$('feedback').textContent='';$('choices').classList.remove('hide');$('zero').disabled=false;$('twentyfour').disabled=false;$('next').classList.add('hide');$('next').textContent=pos+1===deck.length?'View results →':'Next question →';}
-function answer(v){if(locked||pos>=deck.length)return;locked=true;const q=deck[pos];const expected=q.row.energized.includes(q.terminal)?24:0;const opposite=expected===24?0:24;const good=v===expected;if(good)correct++;else missed++;
+function answer(v){if(locked||pos>=deck.length)return;locked=true;const q=deck[pos];const expected=q.row.energized.includes(q.terminal)?24:0;const opposite=expected===24?0:24;const good=v===expected;if(good)correct++;else {missed++;missedQuestions.push(q);}
 $('score').textContent='Score: '+correct+' / '+(pos+1);$('zero').disabled=true;$('twentyfour').disabled=true;
 $('feedback').className='feedback '+(good?'good':'bad');
 $('feedback').innerHTML='<b>'+(good?'Correct!':'Not quite.')+' C–'+q.terminal+' = '+expected+' VAC.</b><p>'+(expected===24?'The '+q.terminal+' output is energized and is approximately 24 VAC above common.':'The '+q.terminal+' output is not energized and is approximately at common potential in this classroom model.')+'</p><p><strong>Compare:</strong> R–'+q.terminal+' would read '+opposite+' VAC.</p>';
 $('next').classList.remove('hide');$('next').focus();}
-function finish(){const pct=Math.round(100*correct/deck.length);$('questionArea').classList.add('hide');$('results').classList.remove('hide');$('progress').textContent='Round complete';$('score').textContent='Score: '+correct+' / '+deck.length;$('progressBar').style.width='100%';$('progressTrack').setAttribute('aria-valuenow','100');$('finalScore').textContent=pct+'%';$('finalText').textContent='You answered '+correct+' of '+deck.length+' questions correctly ('+missed+' missed). Start another round to practice a new randomized selection.';}
+function finish(){const pct=Math.round(100*correct/deck.length);$('questionArea').classList.add('hide');$('results').classList.remove('hide');$('progress').textContent='Round complete';$('score').textContent='Score: '+correct+' / '+deck.length;$('progressBar').style.width='100%';$('progressTrack').setAttribute('aria-valuenow','100');$('finalScore').textContent=pct+'%';$('finalText').textContent='You answered '+correct+' of '+deck.length+' questions correctly ('+missed+' missed). Use Practice missed questions to repeat only your missed items, or start a new randomized round.';$('retryMissed').classList.toggle('hide',missedQuestions.length===0);$('retryMissed').textContent='Practice missed questions ('+missedQuestions.length+')';}
+$('retryMissed').addEventListener('click',()=>{if(missedQuestions.length)beginRound(sample([...missedQuestions]));});
 $('start').addEventListener('click',start);$('retry').addEventListener('click',start);$('zero').addEventListener('click',()=>answer(0));$('twentyfour').addEventListener('click',()=>answer(24));$('next').addEventListener('click',()=>{pos++;show();});
 document.addEventListener('keydown',e=>{if(e.target.matches('select,input,textarea')||$('quiz').classList.contains('hide'))return;if(!locked){if(e.key==='0')answer(0);if(e.key==='2')answer(24);}else if(e.key==='Enter'&&!$('next').classList.contains('hide')){e.preventDefault();pos++;show();}});
 function fillChart(){const body=$('chartBody');for(const r of rows){const tr=document.createElement('tr');const desc=document.createElement('td');desc.textContent=r.fan+' / '+r.system+' / '+r.room+'°→'+r.set+'° / '+r.call;tr.appendChild(desc);for(const t of TERMS){const td=document.createElement('td');const val=r.energized.includes(t)?24:0;td.textContent=val;td.className=val?'hot':'zero';tr.appendChild(td);}body.appendChild(tr);}}
