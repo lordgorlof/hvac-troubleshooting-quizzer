@@ -1,15 +1,105 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Heat Pump Voltage Quizzer</title><style>body{font:18px system-ui;background:#f1f5fa;color:#192d44}main{max-width:740px;margin:auto;padding:16px}section{background:white;padding:22px;border-radius:14px;margin:14px 0}button,select{font:inherit;padding:12px;margin:5px;border-radius:8px}button{background:#17518c;color:white;border:0;cursor:pointer}dl{display:grid;grid-template-columns:1fr 1fr;gap:14px}dt{color:#657387;font-size:13px}dd{margin:0;font-weight:bold}#question{font-weight:bold;font-size:23px}</style><main><p><a href="./">← Troubleshooting quizzer</a></p><h1>Heat Pump Thermostat Voltage Quizzer</h1><p>Practice R-to-terminal readings, fan/system settings, temperature, and call status from your classroom chart. O is used for your reversing valve; B is included for study.</p><section>Questions per round <select id="count"><option>10</option><option>20</option><option selected>36</option><option>50</option></select><p>Terminals <select id="terminals"><option value="all">All R outputs</option><option value="common">G, Y, O, B, E, W2</option></select></p><button id="start">Start randomized quiz</button></section><section id="game" hidden><p id="progress"></p><dl><div><dt>FAN</dt><dd id="fan"></dd></div><div><dt>SYSTEM</dt><dd id="system"></dd></div><div><dt>ROOM</dt><dd id="room"></dd></div><div><dt>SET POINT</dt><dd id="set"></dd></div><div><dt>CALL</dt><dd id="call"></dd></div><div><dt>SCORE</dt><dd id="score"></dd></div></dl><p id="question"></p><div id="choices"><button onclick="answer(0)">0 VAC</button><button onclick="answer(24)">24 VAC</button></div><p id="feedback" aria-live="polite"></p><p id="explain"></p><button id="next" hidden onclick="index++;show()">Next question →</button></section><small>Based on classroom reference values, not a substitute for live electrical diagnosis. The chart's call status controls each answer.</small></main><script>
-const rows=[];function add(fan,system,room,set,call,zeros){rows.push({fan,system,room,set,call,zeros})}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heat Pump Thermostat Quizzer — R Supply Reference</title>
+<style>
+:root{color-scheme:light;--ink:#172a40;--sub:#50647a;--blue:#135d9e;--blue2:#e9f4fe;--line:#d2dee9;--bg:#f0f5fa;--green:#13703f;--red:#b33343}
+*{box-sizing:border-box}body{font:17px/1.5 system-ui,-apple-system,Segoe UI,Arial,sans-serif;margin:0;color:var(--ink);background:var(--bg)}main{max-width:870px;margin:24px auto 60px;padding:0 16px}header,.panel{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px;margin:14px 0;box-shadow:0 3px 12px #15385707}h1{font-size:clamp(1.45rem,3vw,2rem);line-height:1.2;margin:4px 0 8px}h2{font-size:1.15rem;margin:0 0 12px}.eyebrow{font-size:.77rem;font-weight:800;letter-spacing:.075em;text-transform:uppercase;color:var(--blue)}p{margin:.55em 0}a{color:var(--blue)}.muted{color:var(--sub)}.small{font-size:.87rem}.hint{background:#eef5fb;border-left:4px solid var(--blue);padding:10px 14px;border-radius:7px;margin-top:14px}.flex{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.split{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.field{display:flex;flex-direction:column;gap:5px;font-weight:650;font-size:.9rem}.field select{min-width:0}button,select{font:inherit}select{width:100%;padding:10px 12px;border:1px solid #a9bbcb;border-radius:9px;background:white;color:var(--ink)}button{border:1px solid transparent;border-radius:10px;padding:12px 16px;background:var(--blue);color:white;cursor:pointer;font-weight:750}button:hover{filter:brightness(.94)}button:disabled{opacity:.6;cursor:not-allowed}.secondary{background:#fff;border-color:#a6b8cc;color:var(--blue)}.outline{background:#f5f9fc;color:var(--ink);border-color:#bacbda}.quizhead{display:flex;justify-content:space-between;gap:12px;align-items:center}.stats{font-size:.94rem;font-weight:700;color:var(--sub)}.track{height:10px;background:#e3edf5;border-radius:20px;overflow:hidden;margin:13px 0 18px}.bar{height:100%;width:0;background:var(--blue);transition:width .15s}.scenario{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0 18px}.fact{border:1px solid #dae5ef;background:#f7fafc;border-radius:9px;padding:9px 12px}.fact span{display:block;color:var(--sub);font-size:.75rem;font-weight:750;letter-spacing:.035em}.fact strong{display:block;font-size:1.03rem}.question{font-size:clamp(1.25rem,3vw,1.7rem);font-weight:750;margin:12px 0 15px}.question em{font-style:normal;color:var(--blue)}.choices{display:grid;grid-template-columns:1fr 1fr;gap:12px}.choices button{font-size:1.4rem;padding:19px 10px}.feedback{border-radius:10px;padding:15px;background:#edf4fb;margin:17px 0}.feedback.good{background:#ecf8f0;border:1px solid #9fd2b1}.feedback.bad{background:#fff0f0;border:1px solid #e9b4b9}.feedback b{display:block}.feedback p{margin:5px 0 0}.bottom{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-top:14px}.hide{display:none!important}.scroll{overflow-x:auto;margin-top:14px}table{border-collapse:collapse;width:100%;font-size:.85rem}th,td{padding:9px 7px;border-bottom:1px solid #dce6ee;text-align:center;white-space:nowrap}th{background:#e7f1fb;color:#1d4261;position:sticky;top:0}th:first-child,td:first-child{text-align:left}td.hot{font-weight:800;color:#1765a5}td.zero{color:#667587}.summary{text-align:center;padding:20px 0}.summary strong{font-size:2.3rem;color:var(--blue)}.key{font-weight:700;color:var(--blue)}.footer{color:var(--sub);font-size:.83rem;text-align:center;padding:5px 10px}details{margin-top:12px}summary{cursor:pointer;font-weight:700}kbd{border:1px solid #c2cfdb;border-radius:4px;padding:2px 5px;background:#f9fbfd;font-size:.82em}
+@media(max-width:600px){main{margin:0 auto 35px;padding:0 9px}header,.panel{padding:15px;border-radius:12px}.split{grid-template-columns:1fr}.scenario{grid-template-columns:repeat(2,minmax(0,1fr))}.choices button{font-size:1.25rem}}
+@media print{body{background:white;font-size:12px}main{max-width:none;margin:0;padding:0}header,.panel{box-shadow:none;border:0;padding:4px;margin:5px 0}.no-print,#quiz{display:none!important}.scroll{overflow:visible}table{font-size:10px}th,td{padding:4px;white-space:normal}.hide-print{display:none!important}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<div class="eyebrow">AHR 114 • Electrical Controls • Offline Quizzer</div>
+<h1>Heat Pump Thermostat Voltage Quizzer</h1>
+<p><strong>R (supply) to terminal measurements</strong></p>
+<p class="muted">Practice R-to-terminal voltage readings with the same classroom scenarios, an operating-mode filter, and a printable voltage chart.</p>
+<div class="hint"><strong>Remember:</strong> an energized terminal measures <strong>0 VAC from R</strong>; an inactive output generally measures <strong>24 VAC from R</strong> in this classroom circuit model. From C, those answers are reversed. <strong>R–C = 24 VAC</strong> and <strong>R–R = 0 VAC</strong>.</div>
+<p class="small muted">This practice model uses O for cooling and B as its complementary study output. The B, L and X behaviors are carried over from the original classroom quizzer and do not necessarily describe every actual thermostat.</p>
+</header>
+<section class="panel no-print" id="setup">
+<h2>Start a practice round</h2>
+<div class="split">
+<label class="field">Questions per round<select id="count"><option>10</option><option>20</option><option selected>36</option><option>50</option><option>100</option></select></label>
+<label class="field">Measure these terminals<select id="terminals"><option value="all">All: G, Y, O, B, L, X, E, W2</option><option value="core">Core: G, Y, O, B, E, W2</option></select></label>
+<label class="field">Operating mode<select id="mode"><option value="ALL">All modes</option><option value="OFF">OFF</option><option value="COOL">COOL</option><option value="HEAT">HEAT</option><option value="EMERGENCY HEAT">EMERGENCY HEAT</option></select></label>
+</div>
+<p class="small muted">Questions are randomized without repeats within a round. Keyboard shortcuts: <kbd>0</kbd> = 0 VAC; <kbd>2</kbd> = 24 VAC; <kbd>Enter</kbd> = next.</p>
+<button id="start" type="button">Start randomized quiz</button>
+</section>
+<section class="panel hide no-print" id="quiz" aria-live="off">
+<div class="quizhead"><span class="stats" id="progress">Question 1 of 36</span><span class="stats" id="score">Score: 0</span></div>
+<div class="track" role="progressbar" aria-label="Quiz completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progressTrack"><div class="bar" id="progressBar"></div></div>
+<div id="questionArea">
+<div class="scenario" id="facts"></div>
+<div class="question" id="question"></div>
+<div class="choices" id="choices"><button id="zero" type="button">0 VAC</button><button id="twentyfour" type="button">24 VAC</button></div>
+<div id="feedback" class="feedback hide" role="status" aria-live="polite"></div>
+<div class="bottom"><span class="small muted">Red lead: terminal being tested • Black lead: R</span><button type="button" id="next" class="hide">Next question →</button></div>
+</div>
+<div id="results" class="summary hide"><strong id="finalScore"></strong><p id="finalText"></p><button id="retry" type="button">New randomized round</button></div>
+</section>
+<section class="panel" id="reference">
+<div class="flex" style="justify-content:space-between"><h2>Study reference: R-to-terminal voltage chart</h2><button type="button" class="secondary no-print" id="toggleChart">Show chart</button></div>
+<p class="muted small">These are exactly the 20 operating scenarios used in the original R-reference quizzer, shown as R-reference voltages. The first column is the operating scenario; the eight voltage columns are readings between R and each output.</p>
+<div id="chartWrap" class="hide"><div class="scroll"><table id="chart"><thead><tr><th>Fan / System / Room → Set / Call</th><th>R–G</th><th>R–Y</th><th>R–O</th><th>R–B</th><th>R–L</th><th>R–X</th><th>R–E</th><th>R–W2</th></tr></thead><tbody id="chartBody"></tbody></table></div><p class="small">0 = energized (at R potential); blue <span class="key">24</span> = not energized (classroom chart convention).</p><button type="button" class="outline no-print" id="printChart">Print chart</button></div>
+<details class="no-print"><summary>Why do C readings reverse R readings?</summary><p>With a nominal 24 VAC control transformer, R is the 24-volt supply leg and C is the return. If a thermostat closes the R-to-Y circuit, the Y terminal rises to approximately R potential. Thus R–Y ≈ 0 VAC but C–Y ≈ 24 VAC. If Y is off, the connected equipment load normally pulls Y toward C: R–Y ≈ 24 VAC and C–Y ≈ 0 VAC.</p><p class="small muted">Actual readings vary with transformer voltage, control-board electronics, floating terminals and connected loads. Never jumper arbitrary terminals or infer a real wiring fault from this simplified chart alone.</p></details>
+</section>
+<p class="footer">Standalone HTML • No installation, Wi-Fi, server, or external libraries required. For AHR 114 study, not field-service instructions.</p>
+</main>
+<script>
+'use strict';
+// Reproduces scenario data from the user's earlier R-reference voltage.html quizzer.
+// In the original, "zeros" are terminals with 0 VAC from R (i.e. energized).
+// For this R-reference quizzer, energized terminals have 0 VAC from R.
+const rows=[];
+function add(fan,system,room,set,call,energized){rows.push({fan,system,room,set,call,energized});}
 for(const room of [80,70])add('AUTO','OFF',room,75,'NC',[]);
 for(const room of [80,70])add('ON','OFF',room,75,'NC',['G']);
-add('AUTO','COOL',80,75,'C',['G','Y','O']);add('AUTO','COOL',70,75,'NC',['O']);
-add('ON','COOL',80,75,'C',['G','Y','O']);add('ON','COOL',70,75,'NC',['G','O']);
-add('AUTO','HEAT',70,72,'1st',['G','Y','B']);add('AUTO','HEAT',74,72,'NC',['B']);add('AUTO','HEAT',68,72,'2nd',['G','Y','B','W2']);
-add('ON','HEAT',70,72,'1st',['G','Y','B']);add('ON','HEAT',74,72,'NC',['G','B']);add('ON','HEAT',68,72,'2nd',['G','Y','B','W2']);
-add('AUTO','EMERGENCY HEAT',70,72,'1st (E)',['B','L','X','E']);add('AUTO','EMERGENCY HEAT',74,72,'NC',['B','L','X']);add('AUTO','EMERGENCY HEAT',68,72,'2nd (AUX)',['B','L','X','E','W2']);
-add('ON','EMERGENCY HEAT',70,72,'1st (E)',['G','B','L','X','E']);add('ON','EMERGENCY HEAT',74,72,'NC',['G','B','L','X']);add('ON','EMERGENCY HEAT',68,72,'2nd (AUX)',['G','B','L','X','E','W2']);
-const $=id=>document.getElementById(id);let deck=[],index=0,correct=0,locked=false;
-function show(){if(index>=deck.length){$('progress').textContent='Round complete';$('question').textContent='Final score: '+correct+' / '+deck.length+' ('+Math.round(100*correct/deck.length)+'%)';$('choices').hidden=true;$('next').hidden=true;$('feedback').textContent='Start a new round for more practice.';$('explain').textContent='';return}locked=false;const q=deck[index],r=q.row;for(const k of ['fan','system','room','set','call'])$(k).textContent=r[k]+(['room','set'].includes(k)?'°F':'');$('score').textContent=correct+' / '+index;$('progress').textContent='Question '+(index+1)+' of '+deck.length;$('question').textContent='What is the voltage between R and '+q.terminal+'?';$('choices').hidden=false;$('feedback').textContent='';$('explain').textContent='';$('next').hidden=true}
-function answer(v){if(locked)return;locked=true;const q=deck[index],expected=q.row.zeros.includes(q.terminal)?0:24;if(v===expected)correct++;$('feedback').textContent=(v===expected?'Correct! ':'Incorrect. ')+'R-'+q.terminal+' = '+expected+' VAC';$('explain').textContent=expected===0?'Output is at R potential, so the difference is 0 VAC.':'Output is not energized; the chart indicates 24 VAC relative to R.';$('score').textContent=correct+' / '+(index+1);$('next').hidden=false;$('next').textContent=index+1===deck.length?'View results →':'Next question →'}
-$('start').onclick=()=>{const terminals=$('terminals').value==='common'?['G','Y','O','B','E','W2']:['G','Y','O','B','L','X','E','W2'];const all=rows.flatMap(row=>terminals.map(terminal=>({row,terminal})));for(let i=all.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[all[i],all[j]]=[all[j],all[i]]}deck=all.slice(0,Number($('count').value));index=0;correct=0;$('game').hidden=false;show();$('game').scrollIntoView({behavior:'smooth'})};
-</script></html>
+add('AUTO','COOL',80,75,'C',['G','Y','O']);
+add('AUTO','COOL',70,75,'NC',['O']);
+add('ON','COOL',80,75,'C',['G','Y','O']);
+add('ON','COOL',70,75,'NC',['G','O']);
+add('AUTO','HEAT',70,72,'1st',['G','Y','B']);
+add('AUTO','HEAT',74,72,'NC',['B']);
+add('AUTO','HEAT',68,72,'2nd',['G','Y','B','W2']);
+add('ON','HEAT',70,72,'1st',['G','Y','B']);
+add('ON','HEAT',74,72,'NC',['G','B']);
+add('ON','HEAT',68,72,'2nd',['G','Y','B','W2']);
+add('AUTO','EMERGENCY HEAT',70,72,'1st (E)',['B','L','X','E']);
+add('AUTO','EMERGENCY HEAT',74,72,'NC',['B','L','X']);
+add('AUTO','EMERGENCY HEAT',68,72,'2nd (AUX)',['B','L','X','E','W2']);
+add('ON','EMERGENCY HEAT',70,72,'1st (E)',['G','B','L','X','E']);
+add('ON','EMERGENCY HEAT',74,72,'NC',['G','B','L','X']);
+add('ON','EMERGENCY HEAT',68,72,'2nd (AUX)',['G','B','L','X','E','W2']);
+const TERMS=['G','Y','O','B','L','X','E','W2'];
+const $=id=>document.getElementById(id);
+let deck=[],pos=0,correct=0,missed=0,locked=false;
+function sample(all){for(let i=all.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[all[i],all[j]]=[all[j],all[i]];}return all;}
+function start(){const selected=$('terminals').value==='core'?['G','Y','O','B','E','W2']:TERMS;const mode=$('mode').value;const pool=rows.filter(row=>mode==='ALL'||row.system===mode).flatMap(row=>selected.map(terminal=>({row,terminal})));
+deck=sample(pool).slice(0,Math.min(Number($('count').value),pool.length));pos=0;correct=0;missed=0;locked=false;$('quiz').classList.remove('hide');$('results').classList.add('hide');$('questionArea').classList.remove('hide');show();$('quiz').scrollIntoView({behavior:'smooth',block:'start'});}
+function show(){if(pos>=deck.length){finish();return;}locked=false;const q=deck[pos],r=q.row;
+$('progress').textContent='Question '+(pos+1)+' of '+deck.length;
+$('score').textContent='Score: '+correct+' / '+pos;
+$('progressBar').style.width=(100*pos/deck.length)+'%';$('progressTrack').setAttribute('aria-valuenow',String(Math.round(100*pos/deck.length)));
+const values=[['FAN',r.fan],['SYSTEM',r.system],['ROOM',r.room+'°F'],['SET POINT',r.set+'°F'],['CALL',r.call],['METER REFERENCE','R (supply)']];
+$('facts').replaceChildren(...values.map(([label,value])=>{const div=document.createElement('div');div.className='fact';const caption=document.createElement('span');caption.textContent=label;const strong=document.createElement('strong');strong.textContent=value;div.append(caption,strong);return div;}));
+$('question').innerHTML='What is the voltage between <em>R</em> and <em>'+q.terminal+'</em>?';
+$('feedback').className='feedback hide';$('feedback').textContent='';$('choices').classList.remove('hide');$('zero').disabled=false;$('twentyfour').disabled=false;$('next').classList.add('hide');$('next').textContent=pos+1===deck.length?'View results →':'Next question →';}
+function answer(v){if(locked||pos>=deck.length)return;locked=true;const q=deck[pos];const expected=q.row.energized.includes(q.terminal)?0:24;const opposite=expected===24?0:24;const good=v===expected;if(good)correct++;else missed++;
+$('score').textContent='Score: '+correct+' / '+(pos+1);$('zero').disabled=true;$('twentyfour').disabled=true;
+$('feedback').className='feedback '+(good?'good':'bad');
+$('feedback').innerHTML='<b>'+(good?'Correct!':'Not quite.')+' R–'+q.terminal+' = '+expected+' VAC.</b><p>'+(expected===0?'The '+q.terminal+' output is energized and is approximately at R potential, so the difference from R is 0 VAC.':'The '+q.terminal+' output is not energized and is approximately at common potential, so the difference from R is 24 VAC in this classroom model.')+'</p><p><strong>Compare:</strong> C–'+q.terminal+' would read '+opposite+' VAC.</p>';
+$('next').classList.remove('hide');$('next').focus();}
+function finish(){const pct=Math.round(100*correct/deck.length);$('questionArea').classList.add('hide');$('results').classList.remove('hide');$('progress').textContent='Round complete';$('score').textContent='Score: '+correct+' / '+deck.length;$('progressBar').style.width='100%';$('progressTrack').setAttribute('aria-valuenow','100');$('finalScore').textContent=pct+'%';$('finalText').textContent='You answered '+correct+' of '+deck.length+' questions correctly ('+missed+' missed). Start another round to practice a new randomized selection.';}
+$('start').addEventListener('click',start);$('retry').addEventListener('click',start);$('zero').addEventListener('click',()=>answer(0));$('twentyfour').addEventListener('click',()=>answer(24));$('next').addEventListener('click',()=>{pos++;show();});
+document.addEventListener('keydown',e=>{if(e.target.matches('select,input,textarea')||$('quiz').classList.contains('hide'))return;if(!locked){if(e.key==='0')answer(0);if(e.key==='2')answer(24);}else if(e.key==='Enter'&&!$('next').classList.contains('hide')){e.preventDefault();pos++;show();}});
+function fillChart(){const body=$('chartBody');for(const r of rows){const tr=document.createElement('tr');const desc=document.createElement('td');desc.textContent=r.fan+' / '+r.system+' / '+r.room+'°→'+r.set+'° / '+r.call;tr.appendChild(desc);for(const t of TERMS){const td=document.createElement('td');const val=r.energized.includes(t)?0:24;td.textContent=val;td.className=val?'hot':'zero';tr.appendChild(td);}body.appendChild(tr);}}
+fillChart();$('toggleChart').addEventListener('click',()=>{const hidden=$('chartWrap').classList.toggle('hide');$('toggleChart').textContent=hidden?'Show chart':'Hide chart';});$('printChart').addEventListener('click',()=>{const wasHidden=$('chartWrap').classList.contains('hide');if(wasHidden){$('chartWrap').classList.remove('hide');$('toggleChart').textContent='Hide chart';}window.print();});
+</script>
+</body>
+</html>
